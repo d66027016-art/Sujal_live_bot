@@ -15,13 +15,6 @@ const io = new Server(server);
 let bot;
 let isAfkEnabled = true;
 
-// Broadcast System State
-let broadcastList = [process.env.AUTO_MSG || "This AFK bot is made up by Sujal_live"];
-let isBroadcasting = true;
-let currentBCIndex = 0;
-let broadcastTimer = null;
-let broadcastIntervalMs = parseInt(process.env.AUTO_MSG_INTERVAL) || 300000;
-
 app.use(express.static('public'));
 
 // Override console.log to stream to web dashboard
@@ -124,52 +117,6 @@ io.on('connection', (socket) => {
         bot.toss(item.type, null, 1).catch(err => console.log('Drop error:', err));
         break;
     }
-  });
-
-  socket.on('bc_add', (msg) => {
-    if (!socket.authenticated) return;
-    broadcastList.push(msg);
-    io.emit('bc_update', { 
-      list: broadcastList, 
-      active: isBroadcasting, 
-      interval: Math.round(broadcastIntervalMs / 60000) 
-    });
-    console.log(`[Broadcast] Added: ${msg}`);
-  });
-
-  socket.on('bc_remove', (index) => {
-    if (!socket.authenticated) return;
-    broadcastList.splice(index, 1);
-    currentBCIndex = 0; // Reset rotation index to be safe after removal
-    io.emit('bc_update', { 
-      list: broadcastList, 
-      active: isBroadcasting,
-      interval: Math.round(broadcastIntervalMs / 60000)
-    });
-  });
-
-  socket.on('bc_toggle', () => {
-    if (!socket.authenticated) return;
-    isBroadcasting = !isBroadcasting;
-    io.emit('bc_update', { 
-      list: broadcastList, 
-      active: isBroadcasting,
-      interval: Math.round(broadcastIntervalMs / 60000)
-    });
-    console.log(`[Broadcast] Auto-Broadcasting is now ${isBroadcasting ? 'ON' : 'OFF'}`);
-  });
-
-  socket.on('bc_get', () => {
-    if (!socket.authenticated) return;
-    socket.emit('bc_update', { list: broadcastList, active: isBroadcasting, interval: Math.round(broadcastIntervalMs / 60000) });
-  });
-
-  socket.on('bc_set_interval', (mins) => {
-    if (!socket.authenticated) return;
-    broadcastIntervalMs = parseInt(mins) * 60000;
-    startBroadcastTimer();
-    io.emit('bc_update', { list: broadcastList, active: isBroadcasting, interval: mins });
-    console.log(`[Broadcast] Interval updated to ${mins} minutes`);
   });
 });
 
@@ -324,10 +271,7 @@ function createBot() {
       setTimeout(() => {
         joinSurvival();
       }, 5000);
-    }, 3000);
-
-    // Auto-Promoter Logic
-    startBroadcastTimer();
+    }, 2000);
   });
 
   bot.on('end', () => {
@@ -550,27 +494,6 @@ function sendInventory() {
   io.sockets.sockets.forEach(s => {
     if (s.authenticated) s.emit('inventory', slots);
   });
-}
-
-function startBroadcastTimer() {
-  if (broadcastTimer) clearInterval(broadcastTimer);
-  broadcastTimer = setInterval(() => {
-    if (bot && bot.entity && isBroadcasting && broadcastList.length > 0) {
-      const nX = parseFloat(process.env.NPC_X) || 36;
-      const nY = parseFloat(process.env.NPC_Y) || 106;
-      const nZ = parseFloat(process.env.NPC_Z) || 15;
-      const distToLobby = bot.entity.position.distanceTo(new Vec3(nX, nY, nZ));
-      
-      if (distToLobby > 100) {
-        const msg = broadcastList[currentBCIndex];
-        bot.chat(msg);
-        console.log(`[Broadcast] Sending (next in ${Math.round(broadcastIntervalMs/60000)}m): ${msg}`);
-        currentBCIndex = (currentBCIndex + 1) % broadcastList.length;
-      } else {
-        console.log(`[Broadcast] Waiting for Survival... (Currently in Lobby)`);
-      }
-    }
-  }, broadcastIntervalMs);
 }
 
 function getText(obj) {

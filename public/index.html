@@ -377,86 +377,6 @@
         .mc-e { color: #FFFF55 !important; } .mc-f { color: #FFFFFF !important; }
         .mc-l { font-weight: bold; } .mc-m { text-decoration: line-through; }
         .mc-n { text-decoration: underline; } .mc-o { font-style: italic; }
-        .broadcast-card {
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 12px;
-            padding: 1.25rem;
-            margin-top: 1rem;
-        }
-
-        .bc-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-            font-size: 0.8rem;
-            letter-spacing: 1px;
-            color: var(--text-muted);
-            font-weight: 700;
-        }
-
-        .bc-list {
-            max-height: 150px;
-            overflow-y: auto;
-            margin-bottom: 1rem;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .bc-item {
-            background: rgba(255, 255, 255, 0.05);
-            padding: 8px 12px;
-            border-radius: 6px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.85rem;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .bc-item:hover {
-            border-color: rgba(255, 255, 255, 0.2);
-        }
-
-        .bc-item span {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            margin-right: 10px;
-        }
-
-        .btn-icon {
-            background: none;
-            border: none;
-            color: #ff4c4c;
-            cursor: pointer;
-            padding: 4px;
-            display: flex;
-            align-items: center;
-            opacity: 0.6;
-            transition: opacity 0.2s;
-        }
-
-        .btn-icon:hover {
-            opacity: 1;
-        }
-
-        .bc-input-group {
-            display: flex;
-            gap: 8px;
-        }
-
-        .bc-input {
-            flex: 1;
-            background: rgba(0, 0, 0, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 0.85rem;
-        }
 
         .switch {
             position: relative;
@@ -594,26 +514,6 @@
             <button class="btn" onclick="action('reconnect')">🔌 Force Reconnect</button>
         </div>
 
-        <div class="broadcast-card">
-            <div class="bc-header">
-                <span>📢 BROADCASTER</span>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 0.7rem;">Mins:</span>
-                    <input type="number" id="bc-interval" value="5" min="1" max="60" style="width: 40px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 4px; padding: 2px 5px;" onchange="changeInterval()">
-                    <label class="switch">
-                        <input type="checkbox" id="bc-toggle" onchange="toggleBC()">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-            </div>
-            <div id="bc-list" class="bc-list">
-                <!-- Messages populate here -->
-            </div>
-            <div class="bc-input-group">
-                <input type="text" id="bc-input" class="bc-input" placeholder="Add broadcast message..." onkeydown="if(event.key==='Enter') addBC()">
-                <button class="btn btn-primary" style="padding: 0 10px;" onclick="addBC()">+</button>
-            </div>
-        </div>
     </aside>
 
     <main class="main-content">
@@ -874,48 +774,6 @@
         function invAction(action, slot) {
             if (!authenticated) return;
             socket.emit('inv_action', { action, slot });
-        }
-        // Broadcast System UI Logic
-        socket.on('bc_update', (data) => {
-            const listDiv = document.getElementById('bc-list');
-            const toggle = document.getElementById('bc-toggle');
-            const intervalInput = document.getElementById('bc-interval');
-            
-            toggle.checked = data.active;
-            if (data.interval) intervalInput.value = data.interval;
-            listDiv.innerHTML = '';
-            
-            data.list.forEach((msg, index) => {
-                const item = document.createElement('div');
-                item.className = 'bc-item';
-                item.innerHTML = `
-                    <span>${msg}</span>
-                    <button class="btn-icon" onclick="removeBC(${index})">🗑</button>
-                `;
-                listDiv.appendChild(item);
-            });
-        });
-
-        function addBC() {
-            const input = document.getElementById('bc-input');
-            const msg = input.value.trim();
-            if (msg) {
-                socket.emit('bc_add', msg);
-                input.value = '';
-            }
-        }
-
-        function removeBC(index) {
-            socket.emit('bc_remove', index);
-        }
-
-        function toggleBC() {
-            socket.emit('bc_toggle');
-        }
-
-        function changeInterval() {
-            const val = document.getElementById('bc-interval').value;
-            socket.emit('bc_set_interval', val);
         }
     </script>
 </body>
