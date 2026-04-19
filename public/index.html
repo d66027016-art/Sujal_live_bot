@@ -110,6 +110,7 @@
             gap: 12px;
             background: linear-gradient(45deg, #58a6ff, #bc8cff);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
@@ -363,6 +364,144 @@
         }
 
         .inv-slot:hover .tooltip { display: block; }
+
+        /* Minecraft Colors */
+        .color-span { display: inline; text-shadow: 1px 1px 0 rgba(0,0,0,0.5); }
+        .mc-0 { color: #000000 !important; } .mc-1 { color: #0000AA !important; }
+        .mc-2 { color: #00AA00 !important; } .mc-3 { color: #00AAAA !important; }
+        .mc-4 { color: #AA0000 !important; } .mc-5 { color: #AA00AA !important; }
+        .mc-6 { color: #FFAA00 !important; } .mc-7 { color: #AAAAAA !important; }
+        .mc-8 { color: #555555 !important; } .mc-9 { color: #5555FF !important; }
+        .mc-a { color: #55FF55 !important; } .mc-b { color: #55FFFF !important; }
+        .mc-c { color: #FF5555 !important; } .mc-d { color: #FF55FF !important; }
+        .mc-e { color: #FFFF55 !important; } .mc-f { color: #FFFFFF !important; }
+        .mc-l { font-weight: bold; } .mc-m { text-decoration: line-through; }
+        .mc-n { text-decoration: underline; } .mc-o { font-style: italic; }
+        .broadcast-card {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-top: 1rem;
+        }
+
+        .bc-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            font-weight: 700;
+        }
+
+        .bc-list {
+            max-height: 150px;
+            overflow-y: auto;
+            margin-bottom: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .bc-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 8px 12px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .bc-item:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .bc-item span {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-right: 10px;
+        }
+
+        .btn-icon {
+            background: none;
+            border: none;
+            color: #ff4c4c;
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+
+        .btn-icon:hover {
+            opacity: 1;
+        }
+
+        .bc-input-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .bc-input {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 34px;
+            height: 20px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #333;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--primary-color);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(14px);
+        }
     </style>
 </head>
 <body>
@@ -454,6 +593,27 @@
             <button class="btn" onclick="action('toggleAfk')">🔄 Toggle AFK</button>
             <button class="btn" onclick="action('reconnect')">🔌 Force Reconnect</button>
         </div>
+
+        <div class="broadcast-card">
+            <div class="bc-header">
+                <span>📢 BROADCASTER</span>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 0.7rem;">Mins:</span>
+                    <input type="number" id="bc-interval" value="5" min="1" max="60" style="width: 40px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 4px; padding: 2px 5px;" onchange="changeInterval()">
+                    <label class="switch">
+                        <input type="checkbox" id="bc-toggle" onchange="toggleBC()">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+            <div id="bc-list" class="bc-list">
+                <!-- Messages populate here -->
+            </div>
+            <div class="bc-input-group">
+                <input type="text" id="bc-input" class="bc-input" placeholder="Add broadcast message..." onkeydown="if(event.key==='Enter') addBC()">
+                <button class="btn btn-primary" style="padding: 0 10px;" onclick="addBC()">+</button>
+            </div>
+        </div>
     </aside>
 
     <main class="main-content">
@@ -469,6 +629,13 @@
         const socket = io();
         const consoleDiv = document.getElementById('console');
         const overlay = document.getElementById('login-overlay');
+        const colorMap = {
+            'info': '#8b949e',
+            'success': '#3fb950',
+            'warn': '#d29922',
+            'error': '#f85149',
+            'cmd': '#58a6ff'
+        };
         let authenticated = false;
 
         function login() {
@@ -480,6 +647,7 @@
             authenticated = true;
             overlay.style.display = 'none';
             addLog('System', 'Initialization complete. Welcome back, Admin.', 'info');
+            socket.emit('bc_get');
         });
 
         socket.on('auth_fail', () => {
@@ -556,19 +724,67 @@
         function addLog(type, msg, level, isRaw = false) {
             const entry = document.createElement('div');
             entry.className = 'log-entry';
-            // Time is optional, but kept small
             const time = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
             
-            let content = '';
-            if (isRaw) {
-                content = parseMinecraftMessage(msg);
-            } else {
-                content = `<span class="log-type-${level}">[${type}]</span> ${msg}`;
-            }
+            // Render Minecraft Colors from § codes
+            const formattedContent = renderMcText(msg);
 
-            entry.innerHTML = `<span class="log-time">[${time}]</span> ${content}`;
+            entry.innerHTML = `
+                <span class="log-time">[${time}]</span>
+                <span class="log-type" style="color: ${colorMap[level] || 'white'}">[${type}]</span>
+                <span class="log-msg">${formattedContent}</span>
+            `;
+            
             consoleDiv.appendChild(entry);
             consoleDiv.scrollTop = consoleDiv.scrollHeight;
+            
+            if (consoleDiv.children.length > 200) {
+                consoleDiv.removeChild(consoleDiv.firstChild);
+            }
+        }
+
+        function renderMcText(text) {
+            if (!text) return '';
+            if (typeof text !== 'string') text = String(text);
+            
+            let result = '';
+            let openSpans = 1;
+            result += '<span class="color-span">';
+
+            // Split by § but handle Hex codes §#RRGGBB
+            const parts = text.split('§');
+            result += parts[0];
+
+            for (let i = 1; i < parts.length; i++) {
+                let part = parts[i];
+                if (part.length === 0) continue;
+
+                const firstChar = part.charAt(0).toLowerCase();
+                
+                if (firstChar === '#') {
+                    // Check for Hex: #RRGGBB (6 chars)
+                    const hexMatch = part.match(/^#([A-Fa-f0-9]{6})(.*)/);
+                    if (hexMatch) {
+                        result += `<span style="color: #${hexMatch[1]} !important;">`;
+                        result += hexMatch[2]; // the rest of the text
+                        openSpans++;
+                        continue;
+                    }
+                }
+
+                if (firstChar === 'r') {
+                    while(openSpans > 0) { result += '</span>'; openSpans--; }
+                    result += '<span class="color-span">'; openSpans++;
+                } else if ("0123456789abcdefklmno".includes(firstChar)) {
+                    result += `<span class="mc-${firstChar}">`;
+                    openSpans++;
+                }
+                
+                result += part.substring(1);
+            }
+            
+            while(openSpans > 0) { result += '</span>'; openSpans--; }
+            return result;
         }
 
         function sendCmd() {
@@ -658,6 +874,48 @@
         function invAction(action, slot) {
             if (!authenticated) return;
             socket.emit('inv_action', { action, slot });
+        }
+        // Broadcast System UI Logic
+        socket.on('bc_update', (data) => {
+            const listDiv = document.getElementById('bc-list');
+            const toggle = document.getElementById('bc-toggle');
+            const intervalInput = document.getElementById('bc-interval');
+            
+            toggle.checked = data.active;
+            if (data.interval) intervalInput.value = data.interval;
+            listDiv.innerHTML = '';
+            
+            data.list.forEach((msg, index) => {
+                const item = document.createElement('div');
+                item.className = 'bc-item';
+                item.innerHTML = `
+                    <span>${msg}</span>
+                    <button class="btn-icon" onclick="removeBC(${index})">🗑</button>
+                `;
+                listDiv.appendChild(item);
+            });
+        });
+
+        function addBC() {
+            const input = document.getElementById('bc-input');
+            const msg = input.value.trim();
+            if (msg) {
+                socket.emit('bc_add', msg);
+                input.value = '';
+            }
+        }
+
+        function removeBC(index) {
+            socket.emit('bc_remove', index);
+        }
+
+        function toggleBC() {
+            socket.emit('bc_toggle');
+        }
+
+        function changeInterval() {
+            const val = document.getElementById('bc-interval').value;
+            socket.emit('bc_set_interval', val);
         }
     </script>
 </body>

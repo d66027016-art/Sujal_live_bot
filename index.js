@@ -12,6 +12,15 @@ const PORT = process.env.PORT || 3000;
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+let bot;
+let isAfkEnabled = true;
+
+// Broadcast System State
+let broadcastList = [process.env.AUTO_MSG || "This AFK bot is made up by Sujal_live"];
+let isBroadcasting = true;
+let currentBCIndex = 0;
+let broadcastTimer = null;
+let broadcastIntervalMs = parseInt(process.env.AUTO_MSG_INTERVAL) || 300000;
 
 app.use(express.static('public'));
 
@@ -116,14 +125,44 @@ io.on('connection', (socket) => {
         break;
     }
   });
+
+  socket.on('bc_add', (msg) => {
+    if (!socket.authenticated) return;
+    broadcastList.push(msg);
+    io.emit('bc_update', { list: broadcastList, active: isBroadcasting });
+    console.log(`[Broadcast] Added: ${msg}`);
+  });
+
+  socket.on('bc_remove', (index) => {
+    if (!socket.authenticated) return;
+    broadcastList.splice(index, 1);
+    io.emit('bc_update', { list: broadcastList, active: isBroadcasting });
+  });
+
+  socket.on('bc_toggle', () => {
+    if (!socket.authenticated) return;
+    isBroadcasting = !isBroadcasting;
+    io.emit('bc_update', { list: broadcastList, active: isBroadcasting });
+    console.log(`[Broadcast] Auto-Broadcasting is now ${isBroadcasting ? 'ON' : 'OFF'}`);
+  });
+
+  socket.on('bc_get', () => {
+    if (!socket.authenticated) return;
+    socket.emit('bc_update', { list: broadcastList, active: isBroadcasting, interval: Math.round(broadcastIntervalMs / 60000) });
+  });
+
+  socket.on('bc_set_interval', (mins) => {
+    if (!socket.authenticated) return;
+    broadcastIntervalMs = parseInt(mins) * 60000;
+    startBroadcastTimer();
+    io.emit('bc_update', { list: broadcastList, active: isBroadcasting, interval: mins });
+    console.log(`[Broadcast] Interval updated to ${mins} minutes`);
+  });
 });
 
 server.listen(PORT, () => {
   console.log(`Admin Console running at http://localhost:${PORT}`);
 });
-
-let bot;
-let isAfkEnabled = true;
 
 function createBot() {
   bot = mineflayer.createBot({
@@ -136,9 +175,11 @@ function createBot() {
   bot.loadPlugin(pathfinder);
 
   bot.on('message', (jsonMsg) => {
-    const msg = jsonMsg.toString();
-    console.log('[Server Raw Message] ' + JSON.stringify(jsonMsg));
-    const lower = msg.toLowerCase();
+    // preserve § color codes for the web dashboard
+    const msg = jsonMsg.toMotd();
+    console.log(msg);
+    const clean = jsonMsg.toString();
+    const lower = clean.toLowerCase();
 
     if (lower.includes('/register') || lower.includes('register')) {
       bot.chat('/register Bot@12345 Bot@12345');
@@ -146,7 +187,7 @@ function createBot() {
       bot.chat('/login Bot@12345');
     }
 
-    solveChatGames(msg);
+    solveChatGames(clean);
   });
 
   bot.on('health', () => {
@@ -184,8 +225,14 @@ function createBot() {
     }
   }, 2000);
 
-  bot.on('title', (title) => console.log('[Server Title] ' + (typeof title === 'string' ? title : JSON.stringify(title))));
-  bot.on('actionBar', (msg) => console.log('[Server Action Bar] ' + msg.toString()));
+  bot.on('title', (title) => {
+    const text = getText(title);
+    if (typeof text === 'string' && text.trim()) console.log('[Server Title] ' + text);
+  });
+  bot.on('actionBar', (msg) => {
+    const text = getText(msg);
+    if (typeof text === 'string' && text.trim()) console.log('[Server Action Bar] ' + text);
+  });
   bot.on('windowOpen', (win) => {
     console.log('[Server Window] Title: ' + win.title + ' ID: ' + win.id);
     sendInventory();
@@ -209,6 +256,9 @@ function createBot() {
     } else if (lower === '/refresh' || lower === '!refresh') {
       console.log(`[Sync] Manual refresh requested by ${username}`);
       sendInventory();
+    } else if (lower === '!click') {
+      console.log(`[Action] Manual right-click triggered by ${username}`);
+      bot.activateItem();
     }
   });
 
@@ -263,15 +313,8 @@ function createBot() {
       }, 5000);
     }, 3000);
 
-    // Auto-Promoter: Customizable from .env
-    const promoMsg = process.env.AUTO_MSG || "This AFK bot is made up by Sujal_live";
-    const promoInterval = parseInt(process.env.AUTO_MSG_INTERVAL) || 300000;
-    
-    setInterval(() => {
-      if (bot && bot.entity) {
-        bot.chat(promoMsg);
-      }
-    }, promoInterval);
+    // Auto-Promoter Logic
+    startBroadcastTimer();
   });
 
   bot.on('end', () => {
@@ -303,10 +346,22 @@ function joinSurvival() {
   const nY = parseFloat(process.env.NPC_Y) || 106;
   const nZ = parseFloat(process.env.NPC_Z) || 15;
   
-  console.log(`Moving to NPC at ${nX}, ${nY}, ${nZ}...`);
+  console.log(`Checking distance to NPC at ${nX}, ${nY}, ${nZ}...`);
+  if (bot.entity && bot.entity.position.distanceTo(new Vec3(nX, nY, nZ)) > 500) {
+    console.log('[Nav] Bot is too far from lobby coordinates (>500 blocks). You might already be in Survival or a different world. Cancelling auto-join.');
+    isAfkEnabled = true;
+    randomMovement();
+    return;
+  }
+
   const goal = new GoalNear(nX, nY, nZ, 1);
   
-  bot.pathfinder.setMovements(new Movements(bot));
+  // Stealth Movements: No sprinting/parkour in lobby to avoid Vulcan
+  const lobbyMovements = new Movements(bot);
+  lobbyMovements.allowSprinting = false;
+  lobbyMovements.allowParkour = false;
+  
+  bot.pathfinder.setMovements(lobbyMovements);
   bot.pathfinder.setGoal(goal);
 
   // Diagnostic Path Logging
@@ -334,33 +389,47 @@ function joinSurvival() {
   let retryTimeout;
 
   bot.once('goal_reached', () => {
-    console.log('Arrived at NPC location. Interacting...');
+    console.log('Arrived at NPC location. Stopping and waiting (Human Pause)...');
+    bot.pathfinder.setGoal(null); // Stop pathfinder explicitly
     
     // Configurable Look Direction
     const lX = parseFloat(process.env.LOOK_X) || 36;
     const lY = parseFloat(process.env.LOOK_Y) || 107;
     const lZ = parseFloat(process.env.LOOK_Z) || 24;
     
-    bot.lookAt(new Vec3(lX, lY, lZ)).then(() => {
-      const entities = Object.values(bot.entities);
-      const entity = entities.find(e => 
-        e.id !== bot.entity.id && // Don't interact with self
-        e.position.distanceTo(new Vec3(nX, nY, nZ)) < 4
-      );
+    // Wait 2 seconds before interacting (Stealth)
+    setTimeout(() => {
+      console.log('Jumping and Interacting...');
+      bot.setControlState('jump', true);
+      setTimeout(() => bot.setControlState('jump', false), 200);
 
-      if (entity) {
-        console.log(`Found entity ${entity.displayName || entity.type} near target. Interacting...`);
-        bot.activateEntity(entity);
-      } else {
-        console.log('No entity found at target. Clicking the air/block to the East.');
-        const blockPos = targetPos.offset(1, 0, 0);
-        const block = bot.blockAt(blockPos);
-        if (block) bot.activateBlock(block);
-      }
+      bot.lookAt(new Vec3(lX, lY, lZ)).then(() => {
+        // Diagnostic: List all entities nearby
+        const entities = Object.values(bot.entities);
+        const nearby = entities.filter(e => e.position.distanceTo(new Vec3(nX, nY, nZ)) < 10);
+        console.log(`[Interaction] Found ${nearby.length} entities within 10 blocks:`);
+        
+        const entity = entities.find(e => 
+          e.id !== bot.entity.id && 
+          e.position.distanceTo(new Vec3(nX, nY, nZ)) < 5
+        );
+
+        if (entity) {
+          console.log(`Interacting with NPC: ${entity.username || entity.displayName}`);
+          bot.activateEntity(entity);
+          // Small delay before secondary interaction
+          setTimeout(() => bot.useOn(entity), 500);
+        } else {
+          console.log('No specific entity found within 5 blocks. Checking block interaction...');
+          const block = bot.blockAt(new Vec3(nX, nY, nZ));
+          if (block) bot.activateBlock(block);
+        }
+      });
+    }, 2000);
 
       retryTimeout = setTimeout(() => {
         // If 15s later we are still near the lobby spawn, retry
-        if (bot.entity && bot.entity.position.distanceTo(targetPos) < 10) {
+        if (bot.entity && bot.entity.position.distanceTo(new Vec3(nX, nY, nZ)) < 10) {
           console.log('Still in lobby area. Retrying Join Survival...');
           bot.removeListener('path_update', onPathUpdate);
           clearInterval(distanceInterval);
@@ -375,7 +444,6 @@ function joinSurvival() {
         }
       }, 15000);
     });
-  });
 }
 
 function randomMovement() {
@@ -469,6 +537,64 @@ function sendInventory() {
   io.sockets.sockets.forEach(s => {
     if (s.authenticated) s.emit('inventory', slots);
   });
+}
+
+function startBroadcastTimer() {
+  if (broadcastTimer) clearInterval(broadcastTimer);
+  broadcastTimer = setInterval(() => {
+    if (bot && bot.entity && isBroadcasting && broadcastList.length > 0) {
+      const nX = parseFloat(process.env.NPC_X) || 36;
+      const nY = parseFloat(process.env.NPC_Y) || 106;
+      const nZ = parseFloat(process.env.NPC_Z) || 15;
+      const distToLobby = bot.entity.position.distanceTo(new Vec3(nX, nY, nZ));
+      
+      if (distToLobby > 100) {
+        const msg = broadcastList[currentBCIndex];
+        bot.chat(msg);
+        console.log(`[Broadcast] Sending (next in ${Math.round(broadcastIntervalMs/60000)}m): ${msg}`);
+        currentBCIndex = (currentBCIndex + 1) % broadcastList.length;
+      } else {
+        console.log(`[Broadcast] Waiting for Survival... (Currently in Lobby)`);
+      }
+    }
+  }, broadcastIntervalMs);
+}
+
+function getText(obj) {
+  if (!obj) return '';
+  if (typeof obj === 'string') return obj;
+  
+  // Handle NBT-style { type: 'string', value: '...' }
+  if (obj.type === 'string' && typeof obj.value === 'string') return String(obj.value);
+  
+  let text = '';
+  if (typeof obj.text === 'string') text += obj.text;
+  
+  // Handle NBT-style { type: 'list', value: [...], ... }
+  if (Array.isArray(obj.value)) {
+    text += obj.value.map(e => getText(e)).join('');
+  }
+  
+  // Handle standard 'extra' array
+  if (obj.extra) {
+    if (Array.isArray(obj.extra)) {
+      text += obj.extra.map(e => getText(e)).join('');
+    } else {
+      text += getText(obj.extra);
+    }
+  }
+
+  // Handle nested objects in 'value'
+  if (obj.value && typeof obj.value === 'object' && !Array.isArray(obj.value)) {
+    text += getText(obj.value);
+  }
+
+  // Handle raw arrays
+  if (Array.isArray(obj)) {
+    text += obj.map(e => getText(e)).join('');
+  }
+  
+  return String(text);
 }
 
 createBot();
