@@ -12,8 +12,8 @@ const PORT = process.env.PORT || 3000;
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
-let bot;
 let isAfkEnabled = true;
+let autoMsgTimer = null;
 
 app.use(express.static('public'));
 
@@ -272,6 +272,9 @@ function createBot() {
         joinSurvival();
       }, 5000);
     }, 2000);
+
+    // Start simple auto-messenger
+    startAutoMessenger();
   });
 
   bot.on('end', () => {
@@ -494,6 +497,24 @@ function sendInventory() {
   io.sockets.sockets.forEach(s => {
     if (s.authenticated) s.emit('inventory', slots);
   });
+}
+
+function startAutoMessenger() {
+  if (autoMsgTimer) clearInterval(autoMsgTimer);
+  autoMsgTimer = setInterval(() => {
+    if (bot && bot.entity) {
+      const nX = parseFloat(process.env.NPC_X) || 36;
+      const nY = parseFloat(process.env.NPC_Y) || 106;
+      const nZ = parseFloat(process.env.NPC_Z) || 15;
+      const distToLobby = bot.entity.position.distanceTo(new Vec3(nX, nY, nZ));
+      
+      // Only send if far from lobby NPC (meaning we are in survival)
+      if (distToLobby > 100) {
+        bot.chat("This AFK bot is made up by Sujal_live");
+        console.log("[Auto-Msg] Sending promotional message.");
+      }
+    }
+  }, 240000); // 4 minutes
 }
 
 function getText(obj) {
