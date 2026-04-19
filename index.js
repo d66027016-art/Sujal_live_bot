@@ -156,18 +156,21 @@ function createBot() {
 
     solveChatGames(clean);
 
-    // Reliable Chat Triggers (Works with Server Plugins)
-    const chatMsg = clean.toLowerCase().trim();
+    // Improved Chat Triggers with Self-Reply Guard
+    const lowerClean = clean.toLowerCase();
+    const botName = bot.username ? bot.username.toLowerCase() : '';
     
-    // Check if the message contains the trigger words (since clean text often includes prefixes like "Player > help")
-    if (chatMsg.endsWith(' help')) {
-        bot.chat('kya hua bhai');
-    } else if (chatMsg.endsWith(' ping')) {
-        bot.chat('pong');
-    } else if (chatMsg.endsWith(' bot')) {
-        bot.chat('I am an AFK bot created by Sujal_live for 24/7 server stability!');
-    } else if (chatMsg.endsWith(' sujal_live_bot')) {
-        bot.chat('Developer: Sujal_live | Features: Auto-AFK, Auto-Inventory, Live Dashboard. Thanks for using it!');
+    // Ignore messages from the bot itself to prevent loops
+    if (!botName || !lowerClean.startsWith(botName)) {
+        if (lowerClean.endsWith('help')) {
+            bot.chat('kya hua bhai');
+        } else if (lowerClean.endsWith('ping')) {
+            bot.chat('pong');
+        } else if (lowerClean.endsWith('bot')) {
+            bot.chat('I am an AFK bot created by Sujal_live for 24/7 server stability!');
+        } else if (lowerClean.endsWith('sujal_live_bot')) {
+            bot.chat('Developer: Sujal_live | Features: Auto-AFK, Auto-Inventory, Live Dashboard. Thanks for using it!');
+        }
     }
   });
 
@@ -501,19 +504,25 @@ function startAutoMessenger() {
   if (autoMsgTimer) clearInterval(autoMsgTimer);
   autoMsgTimer = setInterval(() => {
     if (bot && bot.entity) {
-      const nX = parseFloat(process.env.NPC_X) || 36;
-      const nY = parseFloat(process.env.NPC_Y) || 106;
-      const nZ = parseFloat(process.env.NPC_Z) || 15;
-      const distToLobby = bot.entity.position.distanceTo(new Vec3(nX, nY, nZ));
-
-      // Only send if far from lobby NPC (meaning we are in survival)
-      if (distToLobby > 100) {
-        bot.chat("This AFK bot is made up by Sujal_live");
-        lastAutoMsgTime = Date.now(); // Reset timer
-        console.log("[Auto-Msg] Sending promotional message.");
+      const now = Date.now();
+      const elapsed = now - lastAutoMsgTime;
+      
+      // If 4 minutes (240,000ms) have passed
+      if (elapsed >= 240000) {
+        const nX = parseFloat(process.env.NPC_X) || 36;
+        const nY = parseFloat(process.env.NPC_Y) || 106;
+        const nZ = parseFloat(process.env.NPC_Z) || 15;
+        const distToLobby = bot.entity.position.distanceTo(new Vec3(nX, nY, nZ));
+        
+        // Only send if in survival (far from lobby NPC)
+        if (distToLobby > 100) {
+          bot.chat("This AFK bot is made up by Sujal_live");
+          lastAutoMsgTime = now; // Reset timer ONLY after successful send
+          console.log("[Auto-Msg] Loop: Message sent to survival chat.");
+        }
       }
     }
-  }, 240000); // 4 minutes
+  }, 1000); // Check every second for the perfect loop
 }
 
 function getText(obj) {
