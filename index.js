@@ -155,6 +155,20 @@ function createBot() {
     }
 
     solveChatGames(clean);
+
+    // Reliable Chat Triggers (Works with Server Plugins)
+    const chatMsg = clean.toLowerCase().trim();
+    
+    // Check if the message contains the trigger words (since clean text often includes prefixes like "Player > help")
+    if (chatMsg.endsWith(' help')) {
+        bot.chat('kya hua bhai');
+    } else if (chatMsg.endsWith(' ping')) {
+        bot.chat('pong');
+    } else if (chatMsg.endsWith(' bot')) {
+        bot.chat('I am an AFK bot created by Sujal_live for 24/7 server stability!');
+    } else if (chatMsg.endsWith(' sujal_live_bot')) {
+        bot.chat('Developer: Sujal_live | Features: Auto-AFK, Auto-Inventory, Live Dashboard. Thanks for using it!');
+    }
   });
 
   bot.on('health', () => {
@@ -205,29 +219,6 @@ function createBot() {
     sendInventory();
   });
 
-  bot.on('chat', (username, message) => {
-    if (username === bot.username) return;
-    const lower = message.toLowerCase().trim();
-
-    // Specific trigger responses
-    if (lower === 'help') {
-      bot.chat('kya hua bhai');
-    } else if (lower === 'ping') {
-      bot.chat('pong');
-    } else if (lower === 'bot' || lower === 'sujal_live_bot') {
-      bot.chat('Hey, I am an AFK bot created by Sujal_live!');
-    } else if (lower.includes('hello')) {
-      bot.chat(`Hi ${username}!`);
-    } else if (lower.includes('how are you')) {
-      bot.chat("I'm just a bot, but thanks for asking!");
-    } else if (lower === '/refresh' || lower === '!refresh') {
-      console.log(`[Sync] Manual refresh requested by ${username}`);
-      sendInventory();
-    } else if (lower === '!click') {
-      console.log(`[Action] Manual right-click triggered by ${username}`);
-      bot.activateItem();
-    }
-  });
 
   bot.on('whisper', (username, message) => {
     if (username === bot.username) return;
