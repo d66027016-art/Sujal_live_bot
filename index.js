@@ -129,20 +129,33 @@ io.on('connection', (socket) => {
   socket.on('bc_add', (msg) => {
     if (!socket.authenticated) return;
     broadcastList.push(msg);
-    io.emit('bc_update', { list: broadcastList, active: isBroadcasting });
+    io.emit('bc_update', { 
+      list: broadcastList, 
+      active: isBroadcasting, 
+      interval: Math.round(broadcastIntervalMs / 60000) 
+    });
     console.log(`[Broadcast] Added: ${msg}`);
   });
 
   socket.on('bc_remove', (index) => {
     if (!socket.authenticated) return;
     broadcastList.splice(index, 1);
-    io.emit('bc_update', { list: broadcastList, active: isBroadcasting });
+    currentBCIndex = 0; // Reset rotation index to be safe after removal
+    io.emit('bc_update', { 
+      list: broadcastList, 
+      active: isBroadcasting,
+      interval: Math.round(broadcastIntervalMs / 60000)
+    });
   });
 
   socket.on('bc_toggle', () => {
     if (!socket.authenticated) return;
     isBroadcasting = !isBroadcasting;
-    io.emit('bc_update', { list: broadcastList, active: isBroadcasting });
+    io.emit('bc_update', { 
+      list: broadcastList, 
+      active: isBroadcasting,
+      interval: Math.round(broadcastIntervalMs / 60000)
+    });
     console.log(`[Broadcast] Auto-Broadcasting is now ${isBroadcasting ? 'ON' : 'OFF'}`);
   });
 
