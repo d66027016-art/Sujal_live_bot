@@ -14,6 +14,7 @@ const server = http.createServer(app);
 const io = new Server(server);
 let isAfkEnabled = true;
 let autoMsgTimer = null;
+let lastAutoMsgTime = Date.now();
 
 app.use(express.static('public'));
 
@@ -63,6 +64,12 @@ io.on('connection', (socket) => {
       socket.emit('auth_fail');
     }
   });
+
+  // Countdown Heartbeat
+  setInterval(() => {
+    const remaining = Math.max(0, 240000 - (Date.now() - lastAutoMsgTime));
+    socket.emit('auto_msg_countdown', { remaining });
+  }, 1000);
 
   socket.on('cmd', (cmd) => {
     if (socket.authenticated && bot) {
@@ -152,9 +159,9 @@ function createBot() {
 
   bot.on('health', () => {
     if (bot.food < 15) {
-      const food = bot.inventory.items().find(i => 
-        i.name.includes('apple') || i.name.includes('bread') || 
-        i.name.includes('steak') || i.name.includes('cooked') || 
+      const food = bot.inventory.items().find(i =>
+        i.name.includes('apple') || i.name.includes('bread') ||
+        i.name.includes('steak') || i.name.includes('cooked') ||
         i.name.includes('carrot') || i.name.includes('potato')
       );
       if (food) {
@@ -231,7 +238,7 @@ function createBot() {
   bot.once('spawn', () => {
     console.log('Bot spawned successfully!');
     console.log('Detected version: ' + bot.version);
-    
+
     // Status update loop
     setInterval(() => {
       if (bot.entity) {
@@ -305,7 +312,7 @@ function joinSurvival() {
   const nX = parseFloat(process.env.NPC_X) || 36;
   const nY = parseFloat(process.env.NPC_Y) || 106;
   const nZ = parseFloat(process.env.NPC_Z) || 15;
-  
+
   console.log(`Checking distance to NPC at ${nX}, ${nY}, ${nZ}...`);
   if (bot.entity && bot.entity.position.distanceTo(new Vec3(nX, nY, nZ)) > 500) {
     console.log('[Nav] Bot is too far from lobby coordinates (>500 blocks). You might already be in Survival or a different world. Cancelling auto-join.');
@@ -315,12 +322,12 @@ function joinSurvival() {
   }
 
   const goal = new GoalNear(nX, nY, nZ, 1);
-  
+
   // Stealth Movements: No sprinting/parkour in lobby to avoid Vulcan
   const lobbyMovements = new Movements(bot);
   lobbyMovements.allowSprinting = false;
   lobbyMovements.allowParkour = false;
-  
+
   bot.pathfinder.setMovements(lobbyMovements);
   bot.pathfinder.setGoal(goal);
 
@@ -351,12 +358,12 @@ function joinSurvival() {
   bot.once('goal_reached', () => {
     console.log('Arrived at NPC location. Stopping and waiting (Human Pause)...');
     bot.pathfinder.setGoal(null); // Stop pathfinder explicitly
-    
+
     // Configurable Look Direction
     const lX = parseFloat(process.env.LOOK_X) || 36;
     const lY = parseFloat(process.env.LOOK_Y) || 107;
     const lZ = parseFloat(process.env.LOOK_Z) || 24;
-    
+
     // Wait 2 seconds before interacting (Stealth)
     setTimeout(() => {
       console.log('Jumping and Interacting...');
@@ -368,9 +375,9 @@ function joinSurvival() {
         const entities = Object.values(bot.entities);
         const nearby = entities.filter(e => e.position.distanceTo(new Vec3(nX, nY, nZ)) < 10);
         console.log(`[Interaction] Found ${nearby.length} entities within 10 blocks:`);
-        
-        const entity = entities.find(e => 
-          e.id !== bot.entity.id && 
+
+        const entity = entities.find(e =>
+          e.id !== bot.entity.id &&
           e.position.distanceTo(new Vec3(nX, nY, nZ)) < 5
         );
 
@@ -387,23 +394,23 @@ function joinSurvival() {
       });
     }, 2000);
 
-      retryTimeout = setTimeout(() => {
-        // If 15s later we are still near the lobby spawn, retry
-        if (bot.entity && bot.entity.position.distanceTo(new Vec3(nX, nY, nZ)) < 10) {
-          console.log('Still in lobby area. Retrying Join Survival...');
-          bot.removeListener('path_update', onPathUpdate);
-          clearInterval(distanceInterval);
-          isAfkEnabled = wasAfk; // Restore state before retry to be safe
-          joinSurvival();
-        } else {
-          console.log('AFK bot online in Survival!');
-          bot.removeListener('path_update', onPathUpdate);
-          clearInterval(distanceInterval);
-          isAfkEnabled = true; // Bot reached survival, enable AFK
-          randomMovement();
-        }
-      }, 15000);
-    });
+    retryTimeout = setTimeout(() => {
+      // If 15s later we are still near the lobby spawn, retry
+      if (bot.entity && bot.entity.position.distanceTo(new Vec3(nX, nY, nZ)) < 10) {
+        console.log('Still in lobby area. Retrying Join Survival...');
+        bot.removeListener('path_update', onPathUpdate);
+        clearInterval(distanceInterval);
+        isAfkEnabled = wasAfk; // Restore state before retry to be safe
+        joinSurvival();
+      } else {
+        console.log('AFK bot online in Survival!');
+        bot.removeListener('path_update', onPathUpdate);
+        clearInterval(distanceInterval);
+        isAfkEnabled = true; // Bot reached survival, enable AFK
+        randomMovement();
+      }
+    }, 15000);
+  });
 }
 
 function randomMovement() {
@@ -507,10 +514,11 @@ function startAutoMessenger() {
       const nY = parseFloat(process.env.NPC_Y) || 106;
       const nZ = parseFloat(process.env.NPC_Z) || 15;
       const distToLobby = bot.entity.position.distanceTo(new Vec3(nX, nY, nZ));
-      
+
       // Only send if far from lobby NPC (meaning we are in survival)
       if (distToLobby > 100) {
         bot.chat("This AFK bot is made up by Sujal_live");
+        lastAutoMsgTime = Date.now(); // Reset timer
         console.log("[Auto-Msg] Sending promotional message.");
       }
     }
@@ -520,18 +528,18 @@ function startAutoMessenger() {
 function getText(obj) {
   if (!obj) return '';
   if (typeof obj === 'string') return obj;
-  
+
   // Handle NBT-style { type: 'string', value: '...' }
   if (obj.type === 'string' && typeof obj.value === 'string') return String(obj.value);
-  
+
   let text = '';
   if (typeof obj.text === 'string') text += obj.text;
-  
+
   // Handle NBT-style { type: 'list', value: [...], ... }
   if (Array.isArray(obj.value)) {
     text += obj.value.map(e => getText(e)).join('');
   }
-  
+
   // Handle standard 'extra' array
   if (obj.extra) {
     if (Array.isArray(obj.extra)) {
@@ -550,7 +558,7 @@ function getText(obj) {
   if (Array.isArray(obj)) {
     text += obj.map(e => getText(e)).join('');
   }
-  
+
   return String(text);
 }
 

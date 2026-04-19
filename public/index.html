@@ -462,6 +462,12 @@
                 <div class="coord-box"><span class="coord-label">Y</span><span id="pos-y">0</span></div>
                 <div class="coord-box"><span class="coord-label">Z</span><span id="pos-z">0</span></div>
             </div>
+
+            <!-- Countdown Timer -->
+            <div style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05); text-align: center;">
+                <div style="font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">Next Auto Msg In</div>
+                <div id="promo-timer" style="font-size: 1.5rem; font-weight: 700; color: #58a6ff; font-family: monospace; text-shadow: 0 0 10px rgba(88,166,255,0.3); transition: color 0.3s;">--:--</div>
+            </div>
         </div>
 
         <div class="card" style="padding: 1rem;">
@@ -775,6 +781,26 @@
             if (!authenticated) return;
             socket.emit('inv_action', { action, slot });
         }
+
+        socket.on('auto_msg_countdown', (data) => {
+            const timerDiv = document.getElementById('promo-timer');
+            if (!timerDiv) return;
+            
+            const totalSeconds = Math.floor(data.remaining / 1000);
+            const m = Math.floor(totalSeconds / 60);
+            const s = totalSeconds % 60;
+            
+            timerDiv.innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            
+            // Add a little glow pulse when close
+            if (totalSeconds < 10) {
+                timerDiv.style.color = '#ff7b72';
+                timerDiv.style.textShadow = '0 0 15px rgba(255,123,114,0.5)';
+            } else {
+                timerDiv.style.color = '#58a6ff';
+                timerDiv.style.textShadow = '0 0 10px rgba(88,166,255,0.3)';
+            }
+        });
     </script>
 </body>
 </html>
