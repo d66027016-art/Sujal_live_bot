@@ -4,6 +4,7 @@ const { pathfinder, Movements, goals: { GoalNear } } = require('mineflayer-pathf
 const Vec3 = require('vec3');
 const express = require('express');
 const http = require('http');
+const path = require('path');
 const { Server } = require('socket.io');
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASS;
@@ -15,11 +16,23 @@ const PORT = process.env.PORT || 3000;
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+
+// Serve static files with absolute path for Render compatibility
+app.use(express.static(path.join(__dirname, 'public')));
+
 let isAfkEnabled = true;
 let autoMsgTimer = null;
 let lastAutoMsgTime = Date.now();
 
-app.use(express.static('public'));
+// Health check endpoint for Render
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
+
+// Root route redirect to index.html if needed (fallback)
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 // Override console.log to stream to web dashboard
 const originalLog = console.log;
@@ -130,8 +143,18 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`Admin Console running at http://localhost:${PORT}`);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Admin Console running at http://0.0.0.0:${PORT}`);
+  console.log(`Detected Environment: ${process.env.NODE_ENV || 'development'}`);
+});
+
+// Handle EPIPE and other stream errors globally to prevent crashes on Render
+process.on('uncaughtException', (err) => {
+  if (err.code === 'EPIPE') {
+    console.log('Caught EPIPE error (Broken Pipe). This is often a non-fatal network blip on Render.');
+    return;
+  }
+  console.error('Uncaught Exception:', err);
 });
 
 function createBot() {
