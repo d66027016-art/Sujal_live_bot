@@ -179,6 +179,12 @@ function createBot() {
     version: process.env.BOT_VERSION || false
   };
 
+  // Sanitize version typo (1.21.11 -> 1.21.1)
+  if (botOptions.version === '1.21.11') {
+    console.log('[Fix] Correcting version typo from 1.21.11 to 1.21.1');
+    botOptions.version = '1.21.1';
+  }
+
   // SOCKS5 Proxy logic
   if (process.env.PROXY_HOST && process.env.PROXY_PORT) {
     console.log(`[Proxy] Routing connection through SOCKS5 proxy: ${process.env.PROXY_HOST}:${process.env.PROXY_PORT}`);
@@ -409,15 +415,17 @@ function joinSurvival() {
     return;
   }
 
-  const goal = new GoalNear(nX, nY, nZ, 1);
-
   // Stealth Movements: No sprinting/parkour in lobby to avoid Vulcan
   const lobbyMovements = new Movements(bot);
   lobbyMovements.allowSprinting = false;
-  lobbyMovements.allowParkour = false;
-
-  bot.pathfinder.setMovements(lobbyMovements);
-  bot.pathfinder.setGoal(goal);
+  console.log(`Setting movement goal to: ${nX}, ${nY}, ${nZ}`);
+  const goal = new GoalNear(nX, nY, nZ, 2);
+  
+  try {
+    bot.pathfinder.setGoal(goal);
+  } catch (err) {
+    console.log('[Movement Error] Pathfinder failed to set goal:', err.message);
+  }
 
   // Diagnostic Path Logging
   const onPathUpdate = (r) => {
@@ -517,7 +525,11 @@ function joinSurvival() {
 }
 
 function randomMovement() {
-  if (!bot || !isAfkEnabled) return;
+  if (!isAfkEnabled || !bot || !bot.entity) return;
+
+  const mcData = require('minecraft-data')(bot.version || '1.21.1');
+  const movements = new Movements(bot, mcData);
+  bot.pathfinder.setMovements(movements);
 
   const directions = ['forward', 'back', 'left', 'right'];
   const dir = directions[Math.floor(Math.random() * directions.length)];
