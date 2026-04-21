@@ -27,6 +27,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 let isAfkEnabled = true;
 let autoMsgTimer = null;
 let lastAutoMsgTime = Date.now();
+let lastReplyTime = 0; // Anti-spam cooldown
 
 // Health check endpoint for Render
 app.get('/health', (req, res) => {
@@ -235,15 +236,22 @@ function createBot() {
     const botName = bot.username ? bot.username.toLowerCase() : '';
     
     // Ignore messages from the bot itself to prevent loops
+    // Anti-spam cooldown (1 reply per 10 seconds)
+    if (Date.now() - lastReplyTime < 10000) return;
+
     if (!botName || !lowerClean.startsWith(botName)) {
         if (lowerClean.endsWith('help')) {
             bot.chat('kya hua bhai');
+            lastReplyTime = Date.now();
         } else if (lowerClean.endsWith('ping')) {
             bot.chat('pong');
+            lastReplyTime = Date.now();
         } else if (lowerClean.endsWith('bot')) {
             bot.chat('I am an AFK bot created by Sujal_live for 24/7 server stability!');
+            lastReplyTime = Date.now();
         } else if (lowerClean.endsWith('sujal_live_bot')) {
             bot.chat('Developer: Sujal_live | Features: Auto-AFK, Auto-Inventory, Live Dashboard. Thanks for using it!');
+            lastReplyTime = Date.now();
         }
     }
   });
@@ -464,8 +472,7 @@ function joinSurvival() {
         if (entity) {
           console.log(`Interacting with NPC: ${entity.username || entity.displayName}`);
           bot.activateEntity(entity);
-          // Small delay before secondary interaction
-          setTimeout(() => bot.useOn(entity), 500);
+          // Removed duplicate interaction to prevent DecoderException kick
         } else {
           console.log('No specific entity found within 5 blocks. Checking block interaction...');
           const block = bot.blockAt(new Vec3(nX, nY, nZ));
@@ -483,6 +490,7 @@ function joinSurvival() {
         isAfkEnabled = wasAfk; // Restore state before retry to be safe
         joinSurvival();
       } else {
+        console.log('--- SUCCESS ---');
         console.log('AFK bot online in Survival!');
         bot.removeListener('path_update', onPathUpdate);
         clearInterval(distanceInterval);
