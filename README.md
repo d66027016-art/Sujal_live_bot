@@ -58,10 +58,21 @@ The bot responds to everyone in the public chat:
 
 2. **Install Dependencies**
    ```bash
-   npm install
-   ```
+    npm install
+    ```
 
-3. **Configure Secrets**
+3. **Proxy Configuration (Optional but Recommended for Render)**
+   If you are hosting on Render and the server blocks the connection, you must use a **SOCKS5 Proxy**.
+   - Find a free SOCKS5 proxy on sites like [Spys.one](https://spys.one/en/socks-proxy-list/).
+   - Add the proxy details to your `.env` (or Render Environment Variables):
+     ```env
+     PROXY_HOST=12.34.56.78
+     PROXY_PORT=1080
+     PROXY_USER=username (optional)
+     PROXY_PASS=password (optional)
+     ```
+
+4. **Configure Secrets**
    Create a `.env` file in the root directory:
    ```env
    BOT_HOST=play.khushigaming.com

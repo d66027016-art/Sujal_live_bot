@@ -2,6 +2,7 @@ require('dotenv').config();
 const mineflayer = require('mineflayer');
 const { pathfinder, Movements, goals: { GoalNear } } = require('mineflayer-pathfinder');
 const Vec3 = require('vec3');
+const { SocksClient } = require('socks');
 const express = require('express');
 const http = require('http');
 const path = require('path');
@@ -170,12 +171,47 @@ function createBot() {
     }
   }
 
-  bot = mineflayer.createBot({
-    host: process.env.BOT_HOST || 'play.khushigaming.com',
+  const botOptions = {
+    host: process.env.BOT_HOST || 'khushigaming.com',
     port: parseInt(process.env.BOT_PORT) || 25565,
     username: process.env.BOT_USERNAME || 'Sujal_live_bot',
     version: process.env.BOT_VERSION || false
-  });
+  };
+
+  // SOCKS5 Proxy logic
+  if (process.env.PROXY_HOST && process.env.PROXY_PORT) {
+    console.log(`[Proxy] Routing connection through SOCKS5 proxy: ${process.env.PROXY_HOST}:${process.env.PROXY_PORT}`);
+    botOptions.connect = (client) => {
+      const proxyOptions = {
+        proxy: {
+          host: process.env.PROXY_HOST,
+          port: parseInt(process.env.PROXY_PORT),
+          type: 5
+        },
+        command: 'connect',
+        destination: {
+          host: botOptions.host,
+          port: botOptions.port
+        }
+      };
+
+      if (process.env.PROXY_USER && process.env.PROXY_PASS) {
+        proxyOptions.proxy.userId = process.env.PROXY_USER;
+        proxyOptions.proxy.password = process.env.PROXY_PASS;
+      }
+
+      SocksClient.createConnection(proxyOptions, (err, info) => {
+        if (err) {
+          console.log(`[Proxy Error] Failed to connect: ${err.message}`);
+          return;
+        }
+        client.setSocket(info.socket);
+        client.emit('connect');
+      });
+    };
+  }
+
+  bot = mineflayer.createBot(botOptions);
 
   bot.loadPlugin(pathfinder);
 
