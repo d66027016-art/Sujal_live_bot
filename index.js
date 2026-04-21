@@ -43,7 +43,20 @@ app.get('/', (req, res) => {
 const originalLog = console.log;
 console.log = function (...args) {
   originalLog.apply(console, args);
-  const msg = args.map(a => (typeof a === 'object' ? JSON.stringify(a) : a)).join(' ');
+  
+  // Format message for dashboard
+  const msg = args.map(arg => {
+    if (typeof arg === 'object') {
+      try { return JSON.stringify(arg); } catch (e) { return '[Object]'; }
+    }
+    return String(arg);
+  }).join(' ');
+
+  // Filter out giant data dumps (>1000 chars) for dashboard stability
+  if (msg.length > 1000) {
+    io.emit('log', { type: 'System', msg: msg.substring(0, 1000) + '... [Message too long for dashboard]', level: 'info' });
+    return;
+  }
 
   // Determine type for better UI coloring
   let type = 'System';
@@ -60,12 +73,10 @@ console.log = function (...args) {
         const rawJsonStr = msg.replace('[Server Raw Message] ', '').trim();
         try {
           const rawObj = JSON.parse(rawJsonStr);
-          // If it's wrapped in a 'json' key (common in some Mineflayer versions), unwrap it
           const finalObj = rawObj.json || rawObj;
           s.emit('log', { type: 'Server', msg: finalObj, level: 'server', isRaw: true });
           return;
         } catch (e) {
-          // Fallback: strip the tag but keep the text
           const cleanMsg = msg.replace('[Server Raw Message] ', '');
           s.emit('log', { type: 'Server', msg: cleanMsg, level: 'server' });
           return;
@@ -319,12 +330,18 @@ function createBot() {
 
   bot.once('spawn', () => {
     console.log('Bot spawned successfully!');
-    console.log('Detected version: ' + bot.version);
+    console.log('Detected version: ' + (bot.version || 'unknown'));
     reconnectDelay = 5000; // Reset backoff on successful spawn
+    
+    // Ensure physics is enabled for movement
+    if (bot.physics) bot.physics.enabled = true;
 
     // Status update loop
     setInterval(() => {
-      if (bot.entity) {
+      if (bot.entity && bot.entity.position) {
+        // Prevent update if bot is still at 0,0,0 (not fully spawned)
+        if (bot.entity.position.x === 0 && bot.entity.position.y === 0) return;
+        
         io.sockets.sockets.forEach(s => {
           if (s.authenticated) {
             s.emit('status', {
@@ -379,11 +396,13 @@ function createBot() {
   });
 
   bot.on('error', err => {
+    const errorDetail = err.message || (typeof err === 'object' ? JSON.stringify(err) : String(err));
     if (err.code === 'ECONNRESET') {
       console.log('Bot Error: ECONNRESET (Connection Reset by Server).');
       console.log('NOTE: This often means the Minecraft server is blocking Render.com IPs or the version is wrong.');
     } else {
-      console.log('Bot error:', err);
+      console.log('Bot error:', errorDetail === '{}' ? 'Unknown Internal Error' : errorDetail);
+      if (err.stack) console.log('Stack Trace:', err.stack.split('\n')[0]); // Only first line of stack
     }
   });
 
