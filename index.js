@@ -16,6 +16,9 @@ const PORT = process.env.PORT || 3000;
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+let bot = null;
+let reconnectDelay = 5000;
+const MAX_RECONNECT_DELAY = 60000;
 
 // Serve static files with absolute path for Render compatibility
 app.use(express.static(path.join(__dirname, 'public')));
@@ -158,6 +161,15 @@ process.on('uncaughtException', (err) => {
 });
 
 function createBot() {
+  if (bot) {
+    try {
+      bot.removeAllListeners();
+      bot.end();
+    } catch (e) {
+      // Ignore cleanup errors
+    }
+  }
+
   bot = mineflayer.createBot({
     host: process.env.BOT_HOST || 'play.khushigaming.com',
     port: parseInt(process.env.BOT_PORT) || 25565,
@@ -258,6 +270,7 @@ function createBot() {
   bot.once('spawn', () => {
     console.log('Bot spawned successfully!');
     console.log('Detected version: ' + bot.version);
+    reconnectDelay = 5000; // Reset backoff on successful spawn
 
     // Status update loop
     setInterval(() => {
@@ -305,12 +318,23 @@ function createBot() {
   });
 
   bot.on('end', () => {
-    console.log('Bot disconnected. Reconnecting in 5 seconds...');
-    setTimeout(createBot, 5000);
+    console.log(`Bot disconnected. Reconnecting in ${reconnectDelay / 1000}s...`);
+    setTimeout(() => {
+      console.log('Attempting reconnection...');
+      createBot();
+    }, reconnectDelay);
+    
+    // Exponential backoff
+    reconnectDelay = Math.min(reconnectDelay * 1.5, MAX_RECONNECT_DELAY);
   });
 
   bot.on('error', err => {
-    console.log('Bot error:', err);
+    if (err.code === 'ECONNRESET') {
+      console.log('Bot Error: ECONNRESET (Connection Reset by Server).');
+      console.log('NOTE: This often means the Minecraft server is blocking Render.com IPs or the version is wrong.');
+    } else {
+      console.log('Bot error:', err);
+    }
   });
 
   bot.on('kicked', reason => {
