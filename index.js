@@ -6,7 +6,10 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASS || 'Sujal8905';
+const ADMIN_PASSWORD = process.env.ADMIN_PASS;
+if (!ADMIN_PASSWORD) {
+  console.log('WARNING: ADMIN_PASS not set in environment variables! Web dashboard will be inaccessible.');
+}
 const PORT = process.env.PORT || 3000;
 
 const app = express();

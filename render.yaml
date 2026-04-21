@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: minecraft-afk-bot
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: BOT_HOST
+        sync: false
+      - key: BOT_PORT
+        sync: false
+      - key: BOT_USERNAME
+        sync: false
+      - key: ADMIN_PASS
+        sync: false
+      - key: BOT_VERSION
+        value: "1.21.1" # Default fallback

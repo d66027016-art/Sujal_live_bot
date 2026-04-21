@@ -1,53 +1,54 @@
-# 🤖 SUJAL_LIVE Assistant – Premium Minecraft AFK Bot & Dashboard
+# 🤖 SUJAL_LIVE Assistant – Classic Minecraft AFK Bot & Dashboard
 
-A professional-grade, lightweight **Minecraft AFK bot** and **Remote Management Dashboard** built with [mineflayer](https://github.com/PrismarineJS/mineflayer). Designed for 24/7 server stability, promotional broadcasting, and high-fidelity remote monitoring.
-
----
-
-### 🌟 Premium Features
-
-#### 📦 High-Fidelity Dashboard
-- **Pixel-Accurate UI**: A classic Minecraft inventory layout with Armor slots, Crafting grid, Off-hand, and Hotbar.
-- **🎨 MOTD Color Support**: Real-time console rendering of Minecraft color codes (`§a`, `§c`, etc.) and modern **Hex Color Gradients**.
-- **⏲️ Live Promo Countdown**: Visual real-time timer (MM:SS) showing exactly when the next promotional message will be sent.
-- **Remote Interaction**: Full control over inventory (Equip, Consume, Drop) directly from your mobile or desktop browser.
-
-#### 🧠 Advanced Automation
-- **🚀 Reliable Auto-Responder**: Detects and responds to chat triggers (`help`, `ping`, `bot`) using a deep packet processor that bypasses server chat plugins.
-- **Lobby Escape**: Automated NPC navigation and "Use Held Item" manual fallback to ensure you reach the survival world every time.
-- **Chat Game Solver**: Automatically detects and answers Math equations and Word Scrambles in milliseconds.
-- **Anti-Stuck Logic**: Intelligent movement and jump-triggers to prevent server kicks for inactivity.
-
-#### 🔒 Enterprise Stability
-- **Auto-Reconnect**: 24/7 uptime with automated session recovery and error handling.
-- **Dashboard Auth**: Password-protected web console (`ADMIN_PASS`) to keep your controls private.
-- **Environment Security**: All credentials stored in `.env` for zero-risk repository management.
+A premium, lightweight **Minecraft AFK bot** and **Remote Management Dashboard** built with [mineflayer](https://github.com/PrismarineJS/mineflayer). This bot doesn't just AFK; it allows you to manage your inventory, escape lobbies, and solve chat games remotely through a beautiful, responsive web interface.
 
 ---
 
-### 🌐 Bot Configuration
+### 🌟 Key Features
+
+#### 📦 Classic Inventory Dashboard
+- **Pixel-Accurate UI**: A classic Minecraft inventory layout including Armor slots, Crafting grid, and Hotbar.
+- **Remote Interaction**: Equip, Use/Consume, or Drop items (Toss 1 or Toss All) directly from your browser.
+- **Live State Sync**: Real-time heartbeat synchronization for Health, Hunger, and Coordinates.
+
+#### 🧠 Intelligent Automation
+- **Lobby Escape**: Automated NPC navigation and "Use Held Item" manual fallback for Hub selectors.
+- **Chat Game Solver**: Automatically detects and answers Math equations (e.g., `15 + 5`) and Word Scrambles.
+- **AFK Movement**: Randomized movement and anti-stuck jumping to prevent server kicks.
+- **Auto-Promoter**: Periodically broadcasts your custom message to the server chat.
+
+#### 🔒 Security & Performance
+- **Dashboard Auth**: Password-protected web console to prevent unauthorized access.
+- **Environment Driven**: All secrets (IP, Port, Passwords) are stored in a secure `.env` file, never committed to GitHub.
+- **Auto-Reconnect**: Automatically recovers from server restarts or connection drops.
+
+---
+
+### 🌐 Server Configuration
+
+Your bot is configured via environment variables for maximum security.
 
 | Setting | Environment Variable | Default / Example |
 | :--- | :--- | :--- |
 | **Host** | `BOT_HOST` | `play.khushigaming.com` |
 | **Port** | `BOT_PORT` | `1241` |
 | **Username**| `BOT_USERNAME` | `Sujal_live_bot` |
+| **Version** | `BOT_VERSION` | `1.21.11` (Auto-detect) |
 | **Admin UI** | `ADMIN_PASS` | `Sujal8905` |
-| **Web Port** | `PORT` | `3000` |
 
 ---
 
-### 💬 Live Chat Triggers
+### 💬 Chat Commands
 
-The bot actively listens to the public chat and responds to anyone typing:
-- **`help`** – ➔ "kya hua bhai"
-- **`ping`** – ➔ "pong"
-- **`bot`** – ➔ General creator information.
-- **`sujal_live_bot`** – ➔ Detailed project & developer credits.
+The bot responds to everyone in the public chat:
+- **`help`** – Replies with "kya hua bhai"
+- **`ping`** – Responds with "pong"
+- **`bot`** – Shows creator information
+- **`sujal_live_bot`** – Detailed creator credit
 
 ---
 
-### 🔧 Installation Guide
+### 🔧 Setup & Installation
 
 1. **Clone the Project**
    ```bash
@@ -60,20 +61,39 @@ The bot actively listens to the public chat and responds to anyone typing:
    npm install
    ```
 
-3. **Set Up Your Identity**
-   Create a `.env` file in the root:
+3. **Configure Secrets**
+   Create a `.env` file in the root directory:
    ```env
    BOT_HOST=play.khushigaming.com
    BOT_PORT=1241
    BOT_USERNAME=Sujal_live_bot
-   ADMIN_PASS=Sujal8905
+   BOT_VERSION=1.21.11
+   ADMIN_PASS=YourSecretPass
    PORT=3000
    ```
 
-4. **Initialize**
+4. **Run the Bot**
    ```bash
-   node index.js
+   node index.js    
    ```
+
+---
+
+### 🚀 Hosting on Render.com (24/7)
+
+You can host this bot for free 24/7 on [Render](https://render.com).
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
+
+#### Deployment Steps:
+1.  **Connect GitHub**: Connect your GitHub account and select this repository.
+2.  **Configuration**:
+    - **Runtime**: `Node`
+    - **Build Command**: `npm install`
+    - **Start Command**: `npm start`
+3.  **Environment Variables**: Add all keys from your `.env` file under the **Environment** tab in Render.
+    - Set `PORT` to `10000` (Render default).
+4.  **Keep Awake**: Use [Cron-job.org](https://cron-job.org) to ping your Render URL every 10 minutes to prevent the free tier from sleeping.
 
 ---
 
@@ -85,4 +105,5 @@ Built with ❤️ by **Sujal_live**
 
 ### 📜 License
 
-This project is open-source. Please **Give a ⭐** if this bot helps your AFK experience!
+This project is open-source and free to use.  
+**Give a ⭐ if you find it useful!**
