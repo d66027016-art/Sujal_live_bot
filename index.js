@@ -446,12 +446,27 @@ function joinSurvival() {
     console.log('[Movement Error] Pathfinder failed to set goal:', err.message);
   }
 
-  // Diagnostic Path Logging
+  // Diagnostic Path Logging with Unstuck Logic
   const onPathUpdate = (r) => {
     if (r.status === 'noPath') {
-      console.log('Pathfinder: No path found! Is there a wall? Trying a small jump/move...');
+      const pos = bot.entity.position;
+      console.log(`[Nav] No path found to NPC from current position (${Math.round(pos.x)}, ${Math.round(pos.y)}, ${Math.round(pos.z)})`);
+      console.log('Attempting to "Break Free" with a random movement burst...');
+      
+      // Random movement burst to unjam
+      const keys = ['forward', 'back', 'left', 'right'];
+      const key = keys[Math.floor(Math.random() * keys.length)];
+      
+      bot.setControlState(key, true);
       bot.setControlState('jump', true);
-      setTimeout(() => bot.setControlState('jump', false), 500);
+      
+      setTimeout(() => {
+        bot.setControlState(key, false);
+        bot.setControlState('jump', false);
+        console.log('[Nav] Burst complete. Retrying pathfinding...');
+        // Try setting the goal again after a short delay
+        try { bot.pathfinder.setGoal(goal); } catch (e) {}
+      }, 1500);
     }
   };
   bot.on('path_update', onPathUpdate);
@@ -526,11 +541,12 @@ function joinSurvival() {
     retryTimeout = setTimeout(() => {
       // If 15s later we are still near the lobby spawn, retry
       if (bot.entity && bot.entity.position.distanceTo(new Vec3(nX, nY, nZ)) < 10) {
-        console.log('Still in lobby area. Retrying Join Survival...');
+        console.log('Still in lobby area. Trying /spawn and Retrying Join Survival...');
+        bot.chat('/spawn'); // Reset to spawn point if possible
         bot.removeListener('path_update', onPathUpdate);
         clearInterval(distanceInterval);
         isAfkEnabled = wasAfk; // Restore state before retry to be safe
-        joinSurvival();
+        setTimeout(() => joinSurvival(), 3000);
       } else {
         console.log('--- SUCCESS ---');
         console.log('AFK bot online in Survival!');
