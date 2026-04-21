@@ -470,9 +470,24 @@ function joinSurvival() {
         );
 
         if (entity) {
-          console.log(`Interacting with NPC: ${entity.username || entity.displayName}`);
-          bot.activateEntity(entity);
-          // Removed duplicate interaction to prevent DecoderException kick
+          const npcName = entity.username || entity.displayName || 'Unknown';
+          console.log(`Targeting NPC: ${npcName}. Aiming...`);
+          
+          bot.lookAt(entity.position.offset(0, 1.6, 0));
+          
+          // Wait 2 seconds while looking at NPC before interacting (more human-like)
+          setTimeout(() => {
+            console.log(`[Action] Right-clicking NPC: ${npcName}`);
+            bot.activateEntity(entity);
+            
+            // Wait 1 second and then try Left-Click as a fallback
+            setTimeout(() => {
+                if (bot.entity && bot.entity.position.distanceTo(new Vec3(nX, nY, nZ)) < 5) {
+                    console.log(`[Backup] Right-click might have failed. Trying Left-click on ${npcName}...`);
+                    bot.attack(entity);
+                }
+            }, 1000);
+          }, 2000);
         } else {
           console.log('No specific entity found within 5 blocks. Checking block interaction...');
           const block = bot.blockAt(new Vec3(nX, nY, nZ));
